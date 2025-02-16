@@ -4,14 +4,12 @@ from flask_migrate import Migrate
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from login.login import before_request, login_function
 from modules.models import db, Promo, Bestsales, User
-from modules.image_tools import (
-    upload_promo_image, delete_promo_image, update_promo_image,
-    upload_product_image, delete_product_image, update_product_image
-)
 from pages_py.api import get_promo, get_bestsales
 from pages_py.pages import promo_page, bestsales_page
 from pages_py.metadata import metadata_page, update_metadata_handler, delete_category_image
 from pages_py.payment import payment_page, add_payment_info, delete_payment_info
+from middleware.cors import add_cors_headers, handle_options_request
+from pages_py.new_products import new_products_page, upload_new_product_handler, delete_new_product_handler, get_new_products_api, update_new_product_handler
 
 app = Flask(__name__, 
     template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'),
@@ -23,7 +21,7 @@ app.config.update(
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     UPLOAD_FOLDER=os.path.join(basedir, 'static', 'uploads'),
     MAX_CONTENT_LENGTH=16 * 1024 * 1024,
-    SECRET_KEY='admin'
+    SECRET_KEY=os.environ.get('FLASK_SECRET_KEY') or os.urandom(24)
 )
 
 upload_folder = os.path.join(app.static_folder, 'uploads')
@@ -83,43 +81,69 @@ def bestsales_page_route():
     return bestsales_page(app, Bestsales)
 
 @app.route('/upload', methods=['POST'])
+@login_required
 def upload_image():
     from pages_py.promo import upload_image_handler
     return upload_image_handler(app)
 
 @app.route('/delete/<string:image_id>', methods=['POST'])
+@login_required
 def delete_image(image_id):
     from pages_py.promo import delete_image_handler
     return delete_image_handler(image_id)
 
 @app.route('/update/<string:image_id>', methods=['POST'])
+@login_required
 def update_image(image_id):
     from pages_py.promo import update_image_handler
     return update_image_handler(image_id)
 
 @app.route('/add_product', methods=['POST'])
+@login_required
 def add_product():
     from pages_py.BestSales import upload_product_handler
     return upload_product_handler(app)
 
 @app.route('/delete_product/<string:product_id>', methods=['POST'])
+@login_required
 def delete_product(product_id):
     from pages_py.BestSales import delete_product_handler
     return delete_product_handler(product_id)
 
 @app.route('/update_product/<string:product_id>', methods=['POST'])
+@login_required
 def update_product(product_id):
     from pages_py.BestSales import update_product_handler
     return update_product_handler(product_id)
 
-# API endpoints
+
 @app.route('/api/promo', methods=['GET'])
+@login_required
 def get_promo_route():
     return get_promo(app, Promo)
 
 @app.route('/api/bestSales', methods=['GET'])
+@login_required
 def get_bestsales_route():
     return get_bestsales(app, Bestsales)
+
+@app.route('/api/metadata', methods=['GET'])
+@login_required
+def get_metadata_route():
+    from pages_py.metadata import get_metadata_api
+    return get_metadata_api()
+
+@app.route('/api/payment', methods=['GET'])
+@login_required
+def get_payment_route():
+    from pages_py.payment import get_payment_api
+    return get_payment_api()
+
+@app.route('/api/payments/all', methods=['GET'])
+@login_required
+def get_all_payments_route():
+    from pages_py.payment import get_all_payments_api
+    return get_all_payments_api()
 
 @app.route('/metadata')
 @login_required
@@ -136,10 +160,11 @@ def update_metadata():
 def delete_category_image_route(category):
     return delete_category_image(category)
 
-@app.route('/api/metadata', methods=['GET'])
-def get_metadata_route():
-    from pages_py.metadata import get_metadata_api
-    return get_metadata_api()
+@app.route('/update_payment/<int:payment_id>', methods=['POST'])
+@login_required
+def update_payment(payment_id):
+    from pages_py.payment import update_payment_info
+    return update_payment_info(payment_id)
 
 @app.route('/payment')
 @login_required
@@ -162,21 +187,40 @@ def toggle_payment(payment_id):
     from pages_py.payment import toggle_payment_status
     return toggle_payment_status(payment_id)
 
-@app.route('/api/payment', methods=['GET'])
-def get_payment_route():
-    from pages_py.payment import get_payment_api
-    return get_payment_api()
-
-@app.route('/api/payments/all', methods=['GET'])
-def get_all_payments_route():
-    from pages_py.payment import get_all_payments_api
-    return get_all_payments_api()
-
-@app.route('/update_payment/<int:payment_id>', methods=['POST'])
+@app.route('/new_products')
 @login_required
-def update_payment(payment_id):
-    from pages_py.payment import update_payment_info
-    return update_payment_info(payment_id)
+def new_products_page_route():
+    return new_products_page()
+
+@app.route('/add_new_product', methods=['POST'])
+@login_required
+def add_new_product():
+    return upload_new_product_handler(app)
+
+@app.route('/delete_new_product/<string:product_id>', methods=['POST'])
+@login_required
+def delete_new_product(product_id):
+    return delete_new_product_handler(product_id)
+
+@app.route('/api/new_products', methods=['GET'])
+@login_required
+def get_new_products_route():
+    return get_new_products_api()
+
+@app.route('/update_new_product/<string:product_id>', methods=['POST'])
+@login_required
+def update_new_product(product_id):
+    return update_new_product_handler(product_id)
+
+@app.after_request
+def after_request(response):
+    if request.path.startswith('/api/'):
+        return add_cors_headers(response)
+    return response
+
+@app.route('/api/<path:path>', methods=['OPTIONS'])
+def api_options(path):
+    return handle_options_request()
 
 if __name__ == '__main__':
     with app.app_context():

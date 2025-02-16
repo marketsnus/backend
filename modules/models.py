@@ -90,4 +90,23 @@ class PaymentInfo(db.Model):
             'recipient_name': self.recipient_name,
             'active': self.active,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+class NewProducts(db.Model):
+    __tablename__ = 'new_products'
+    id = db.Column(db.String(36), primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    s3_url = db.Column(db.String(512), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'filename': self.filename,
+            'name': self.name,
+            'description': self.description,
+            's3_url': self.s3_url,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
         } 

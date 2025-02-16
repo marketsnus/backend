@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Управление новинками</h2>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
+            <i class="fas fa-plus me-2"></i>Добавить новинку
+        </button>
+    </div>
+
+    <!-- Таблица с существующими новинками -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Существующие новинки</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Изображение</th>
+                            <th>Название</th>
+                            <th>Описание</th>
+                            <th>Дата добавления</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td>
+                                <img src="{{ product.s3_url }}" alt="{{ product.name }}" 
+                                     style="height: 100px; object-fit: cover;">
+                            </td>
+                            <td>{{ product.name }}</td>
+                            <td>{{ product.description }}</td>
+                            <td>{{ product.created_at }}</td>
+                            <td>
+                                <button type="button" class="btn btn-primary btn-sm mb-1" 
+                                        onclick="editProduct('{{ product.id }}', '{{ product.name }}', '{{ product.description }}')">
+                                    <i class="fas fa-edit"></i> Редактировать
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm" 
+                                        onclick="deleteProduct('{{ product.id }}')">
+                                    <i class="fas fa-trash"></i> Удалить
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить новинку</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newProductForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Изображение</label>
+                        <input type="file" class="form-control" id="image" name="image" accept="image/*" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="submitNewProduct()">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать новинку</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="edit_id">
+                    <div class="mb-3">
+                        <label for="edit_name" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="edit_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="edit_description" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="updateProduct()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editModal;
+let addModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    editModal = new bootstrap.Modal(document.getElementById('editModal'));
+    addModal = new bootstrap.Modal(document.getElementById('addProductModal'));
+});
+
+function submitNewProduct() {
+    const formData = new FormData(document.getElementById('newProductForm'));
+    
+    fetch('/add_new_product', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Новинка успешно добавлена');
+            addModal.hide();
+            location.reload();
+        } else {
+            alert('Ошибка при добавлении: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка при добавлении: ' + error);
+    });
+}
+
+function editProduct(id, name, description) {
+    document.getElementById('edit_id').value = id;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_description').value = description;
+    editModal.show();
+}
+
+function updateProduct() {
+    const id = document.getElementById('edit_id').value;
+    const name = document.getElementById('edit_name').value;
+    const description = document.getElementById('edit_description').value;
+    
+    fetch(`/update_new_product/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            description: description
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Новинка успешно обновлена');
+            editModal.hide();
+            location.reload();
+        } else {
+            alert('Ошибка при обновлении: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка при обновлении: ' + error);
+    });
+}
+
+function deleteProduct(productId) {
+    if (confirm('Вы уверены, что хотите удалить эту новинку?')) {
+        fetch(`/delete_new_product/${productId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка при удалении: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Ошибка при удалении: ' + error);
+        });
+    }
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,27 @@
+<svg width="100%" height="100%" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+            <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#f0f0f0" stroke-width="1"/>
+        </pattern>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#f8f9fa;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#e9ecef;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    
+    <!-- Фоновый градиент -->
+    <rect width="100%" height="100%" fill="url(#bg)"/>
+    
+    <!-- Сетка -->
+    <rect width="100%" height="100%" fill="url(#grid)"/>
+    
+    <!-- Декоративные элементы -->
+    <circle cx="200" cy="200" r="100" fill="#007bff" fill-opacity="0.1"/>
+    <circle cx="1720" cy="880" r="150" fill="#28a745" fill-opacity="0.1"/>
+    
+    <!-- Волнистые линии -->
+    <path d="M0,400 C300,450 600,350 900,400 C1200,450 1500,350 1920,400" 
+          stroke="#007bff" stroke-width="2" fill="none" opacity="0.2"/>
+    <path d="M0,600 C300,650 600,550 900,600 C1200,650 1500,550 1920,600" 
+          stroke="#28a745" stroke-width="2" fill="none" opacity="0.2"/>
+</svg> 
