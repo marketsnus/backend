@@ -1,61 +1,79 @@
-from flask import Flask, render_template, request, jsonify
+from flask import request, jsonify
 from werkzeug.utils import secure_filename
 import os
-from datetime import datetime
 import uuid
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from dotenv import load_dotenv
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from s3_controller import upload_image_to_s3, delete_image_from_s3
+from modules.s3_controller import upload_image_to_s3, delete_image_from_s3
+from modules.models import db, Product
 
-template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'templates')
-app = Flask(__name__, template_folder=template_dir)
+def upload_product_handler(app):
+    if 'image' not in request.files:
+        return jsonify({'error': 'Файл не выбран'}), 400
 
-# Создаем путь к папке databases
-basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-db_folder = os.path.join(basedir, 'databases')
-if not os.path.exists(db_folder):
-    os.makedirs(db_folder)
+    file = request.files['image']
+    name = request.form.get('name', '')
+    category = request.form.get('category', '')
+    price = request.form.get('price', 0)
 
-app.config.update(
-    SQLALCHEMY_DATABASE_URI='sqlite:///' + os.path.join(db_folder, 'popular.db'),
-    SQLALCHEMY_TRACK_MODIFICATIONS=False,
-    UPLOAD_FOLDER=os.path.join(basedir, 'static', 'uploads'),
-    MAX_CONTENT_LENGTH=16 * 1024 * 1024
-)
+    if file.filename == '':
+        return jsonify({'error': 'Файл не выбран'}), 400
 
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+    try:
+        product_id = str(uuid.uuid4())
+        original_filename = secure_filename(file.filename)
+        filename = f"{product_id}_{original_filename}"
 
-load_dotenv()
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(temp_path)
 
-class Product(db.Model):
-    __tablename__ = 'product'  # Явно указываем имя таблицы
-    id = db.Column(db.String(50), primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(50), nullable=False)
-    price = db.Column(db.Float, nullable=False)
-    filename = db.Column(db.String(255), nullable=False)
-    s3_url = db.Column(db.String(512), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        if upload_image_to_s3(temp_path, filename):
+            s3_url = f"https://sqwonkerb.storage.yandexcloud.net/{filename}"
 
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'category': self.category,
-            'price': self.price,
-            'filename': self.filename,
-            's3_url': self.s3_url,
-            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
-        }
+            new_product = Product(
+                id=product_id,
+                filename=filename,
+                name=name,
+                category=category,
+                price=float(price),
+                s3_url=s3_url
+            )
+            db.session.add(new_product)
+            db.session.commit()
 
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
+            os.remove(temp_path)
+            return jsonify(new_product.to_dict()), 200
+        else:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            return jsonify({'error': 'Ошибка загрузки в S3'}), 500
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True)
+    except Exception as e:
+        if 'temp_path' in locals() and os.path.exists(temp_path):
+            os.remove(temp_path)
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+def delete_product_handler(product_id):
+    try:
+        product = Product.query.get_or_404(product_id)
+        if delete_image_from_s3(product.filename):
+            db.session.delete(product)
+            db.session.commit()
+            return jsonify({'success': True}), 200
+        else:
+            return jsonify({'error': 'Ошибка удаления из S3'}), 500
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+def update_product_handler(product_id):
+    try:
+        product = Product.query.get_or_404(product_id)
+        product.name = request.form.get('name', product.name)
+        product.category = request.form.get('category', product.category)
+        product.price = float(request.form.get('price', product.price))
+        db.session.commit()
+        return jsonify(product.to_dict()), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
