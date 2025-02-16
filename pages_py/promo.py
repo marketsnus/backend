@@ -4,7 +4,7 @@ import os
 import uuid
 import sys
 from modules.s3_controller import upload_image_to_s3, delete_image_from_s3
-from modules.models import db, Image
+from modules.models import db, Promo
 
 def upload_image_handler(app):
     if 'image' not in request.files:
@@ -28,7 +28,7 @@ def upload_image_handler(app):
         if upload_image_to_s3(temp_path, filename):
             s3_url = f"https://sqwonkerb.storage.yandexcloud.net/{filename}"
 
-            new_image = Image(
+            new_image = Promo(
                 id=file_id,
                 filename=filename,
                 original_filename=original_filename,
@@ -54,7 +54,7 @@ def upload_image_handler(app):
 
 def delete_image_handler(image_id):
     try:
-        image = Image.query.get_or_404(image_id)
+        image = Promo.query.get_or_404(image_id)
         if delete_image_from_s3(image.filename):
             db.session.delete(image)
             db.session.commit()
@@ -67,7 +67,7 @@ def delete_image_handler(image_id):
 
 def update_image_handler(image_id):
     try:
-        image = Image.query.get_or_404(image_id)
+        image = Promo.query.get_or_404(image_id)
         image.title = request.form.get('title', image.title)
         image.description = request.form.get('description', image.description)
         db.session.commit()

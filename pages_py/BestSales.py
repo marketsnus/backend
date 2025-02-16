@@ -4,7 +4,7 @@ import os
 import uuid
 import sys
 from modules.s3_controller import upload_image_to_s3, delete_image_from_s3
-from modules.models import db, Product
+from modules.models import db, Bestsales
 
 def upload_product_handler(app):
     if 'image' not in request.files:
@@ -29,7 +29,7 @@ def upload_product_handler(app):
         if upload_image_to_s3(temp_path, filename):
             s3_url = f"https://sqwonkerb.storage.yandexcloud.net/{filename}"
 
-            new_product = Product(
+            new_product = Bestsales(
                 id=product_id,
                 filename=filename,
                 name=name,
@@ -55,7 +55,7 @@ def upload_product_handler(app):
 
 def delete_product_handler(product_id):
     try:
-        product = Product.query.get_or_404(product_id)
+        product = Bestsales.query.get_or_404(product_id)
         if delete_image_from_s3(product.filename):
             db.session.delete(product)
             db.session.commit()
@@ -68,7 +68,7 @@ def delete_product_handler(product_id):
 
 def update_product_handler(product_id):
     try:
-        product = Product.query.get_or_404(product_id)
+        product = Bestsales.query.get_or_404(product_id)
         product.name = request.form.get('name', product.name)
         product.category = request.form.get('category', product.category)
         product.price = float(request.form.get('price', product.price))

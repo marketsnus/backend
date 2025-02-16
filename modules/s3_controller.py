@@ -6,10 +6,9 @@ import hmac
 import base64
 from dotenv import load_dotenv
 
-# Загружаем переменные окружения из .env файла
+
 load_dotenv()
 
-# Получаем значения из переменных окружения
 YC_ACCESS_KEY = os.getenv('YC_ACCESS_KEY')
 YC_SECRET_KEY = os.getenv('YC_SECRET_KEY')
 YC_BUCKET_NAME = os.getenv('YC_BUCKET_NAME')

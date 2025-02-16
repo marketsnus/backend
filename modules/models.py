@@ -1,9 +1,23 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import UserMixin
 
 db = SQLAlchemy()
 
-class Image(db.Model):
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128))
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+class Promo(db.Model):
     __tablename__ = 'promo_images'
     id = db.Column(db.String(36), primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
@@ -23,7 +37,7 @@ class Image(db.Model):
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
         }
 
-class Product(db.Model):
+class Bestsales(db.Model):
     __tablename__ = 'bestsales_products'
     id = db.Column(db.String(36), primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
@@ -41,5 +55,39 @@ class Product(db.Model):
             'category': self.category,
             'price': self.price,
             's3_url': self.s3_url,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+class Metadata(db.Model):
+    __tablename__ = 'metadata'
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    value = db.Column(db.Text, nullable=False)
+    description = db.Column(db.String(200))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'key': self.key,
+            'value': self.value,
+            'description': self.description
+        }
+
+class PaymentInfo(db.Model):
+    __tablename__ = 'payment_info'
+    id = db.Column(db.Integer, primary_key=True)
+    account_number = db.Column(db.String(100), nullable=False)
+    bank_name = db.Column(db.String(200), nullable=False)
+    recipient_name = db.Column(db.String(200), nullable=False)
+    active = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'account_number': self.account_number,
+            'bank_name': self.bank_name,
+            'recipient_name': self.recipient_name,
+            'active': self.active,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
         } 

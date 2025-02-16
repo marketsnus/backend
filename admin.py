@@ -1,17 +1,17 @@
-from flask import Flask, render_template, redirect, url_for, request, jsonify
+from flask import Flask, render_template, redirect, url_for, request, jsonify, flash
 import os
 from flask_migrate import Migrate
-
-# Импорты из модулей
-from modules.models import db, Image, Product
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from login.login import before_request, login_function
+from modules.models import db, Promo, Bestsales, User
 from modules.image_tools import (
     upload_promo_image, delete_promo_image, update_promo_image,
     upload_product_image, delete_product_image, update_product_image
 )
-
-# Импорты из pages_py
 from pages_py.api import get_promo, get_bestsales
 from pages_py.pages import promo_page, bestsales_page
+from pages_py.metadata import metadata_page, update_metadata_handler, delete_category_image
+from pages_py.payment import payment_page, add_payment_info, delete_payment_info
 
 app = Flask(__name__, 
     template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'),
@@ -22,9 +22,9 @@ app.config.update(
     SQLALCHEMY_DATABASE_URI='sqlite:///' + os.path.join(basedir, 'database.db'),
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     UPLOAD_FOLDER=os.path.join(basedir, 'static', 'uploads'),
-    MAX_CONTENT_LENGTH=16 * 1024 * 1024
+    MAX_CONTENT_LENGTH=16 * 1024 * 1024,
+    SECRET_KEY='admin'
 )
-
 
 upload_folder = os.path.join(app.static_folder, 'uploads')
 if not os.path.exists(upload_folder):
@@ -32,6 +32,11 @@ if not os.path.exists(upload_folder):
 
 db.init_app(app)
 migrate = Migrate(app, db)
+
+# Инициализация Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login_router'
 
 def init_database():
     """Инициализация базы данных"""
@@ -42,17 +47,40 @@ def init_database():
         print(f"Ошибка при инициализации базы данных: {str(e)}")
         raise
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+@app.before_request
+def before_request_router():
+    return before_request()
+
+@app.route('/login', methods=['GET', 'POST'])
+def login_router():
+    return login_function()
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login_router'))
+
+
 @app.route('/')
+@login_required
 def index():
     return render_template('base.html')
 
 @app.route('/promo')
+@login_required
 def promo_page_route():
-    return promo_page(app, Image)
+    return promo_page(app, Promo)
 
 @app.route('/bestsales')
+@login_required
 def bestsales_page_route():
-    return bestsales_page(app, Product)
+    return bestsales_page(app, Bestsales)
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
@@ -87,13 +115,76 @@ def update_product(product_id):
 # API endpoints
 @app.route('/api/promo', methods=['GET'])
 def get_promo_route():
-    return get_promo(app, Image)
+    return get_promo(app, Promo)
 
 @app.route('/api/bestSales', methods=['GET'])
 def get_bestsales_route():
-    return get_bestsales(app, Product)
+    return get_bestsales(app, Bestsales)
+
+@app.route('/metadata')
+@login_required
+def metadata_page_route():
+    return metadata_page()
+
+@app.route('/update_metadata', methods=['POST'])
+@login_required
+def update_metadata():
+    return update_metadata_handler()
+
+@app.route('/delete_category_image/<category>', methods=['POST'])
+@login_required
+def delete_category_image_route(category):
+    return delete_category_image(category)
+
+@app.route('/api/metadata', methods=['GET'])
+def get_metadata_route():
+    from pages_py.metadata import get_metadata_api
+    return get_metadata_api()
+
+@app.route('/payment')
+@login_required
+def payment_page_route():
+    return payment_page()
+
+@app.route('/add_payment', methods=['POST'])
+@login_required
+def add_payment():
+    return add_payment_info()
+
+@app.route('/delete_payment/<int:payment_id>', methods=['POST'])
+@login_required
+def delete_payment(payment_id):
+    return delete_payment_info(payment_id)
+
+@app.route('/toggle_payment/<int:payment_id>', methods=['POST'])
+@login_required
+def toggle_payment(payment_id):
+    from pages_py.payment import toggle_payment_status
+    return toggle_payment_status(payment_id)
+
+@app.route('/api/payment', methods=['GET'])
+def get_payment_route():
+    from pages_py.payment import get_payment_api
+    return get_payment_api()
+
+@app.route('/api/payments/all', methods=['GET'])
+def get_all_payments_route():
+    from pages_py.payment import get_all_payments_api
+    return get_all_payments_api()
+
+@app.route('/update_payment/<int:payment_id>', methods=['POST'])
+@login_required
+def update_payment(payment_id):
+    from pages_py.payment import update_payment_info
+    return update_payment_info(payment_id)
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        if not User.query.filter_by(username='admin').first():
+            admin = User(username='admin')
+            admin.set_password('admin')
+            db.session.add(admin)
+            db.session.commit()
+            print("Создан пользователь admin с паролем admin")
     app.run(debug=True) 
