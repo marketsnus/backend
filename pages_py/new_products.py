@@ -88,10 +88,19 @@ def get_new_products_api():
         products = NewProducts.query.order_by(NewProducts.created_at.desc()).all()
         return jsonify({
             'success': True,
-            'products': [product.to_dict() for product in products]
+            'products': [{
+                'id': product.id,
+                'name': product.name,
+                'description': product.description,
+                's3_url': product.s3_url,
+                'created_at': product.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            } for product in products]
         }), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 def update_new_product_handler(product_id):
     """Обработчик обновления новинки"""

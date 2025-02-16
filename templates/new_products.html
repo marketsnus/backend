@@ -37,14 +37,18 @@
                             <td>{{ product.description }}</td>
                             <td>{{ product.created_at }}</td>
                             <td>
-                                <button type="button" class="btn btn-primary btn-sm mb-1" 
-                                        onclick="editProduct('{{ product.id }}', '{{ product.name }}', '{{ product.description }}')">
-                                    <i class="fas fa-edit"></i> Редактировать
-                                </button>
-                                <button type="button" class="btn btn-danger btn-sm" 
-                                        onclick="deleteProduct('{{ product.id }}')">
-                                    <i class="fas fa-trash"></i> Удалить
-                                </button>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-primary btn-sm" 
+                                            onclick="editProduct('{{ product.id }}', '{{ product.name }}', '{{ product.description }}')"
+                                            title="Редактировать">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-sm" 
+                                            onclick="deleteProduct('{{ product.id }}')"
+                                            title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}

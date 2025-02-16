@@ -203,8 +203,9 @@ def delete_new_product(product_id):
     return delete_new_product_handler(product_id)
 
 @app.route('/api/new_products', methods=['GET'])
-@login_required
-def get_new_products_route():
+def get_new_products_api_route():
+    """API маршрут для получения списка новинок"""
+    from pages_py.new_products import get_new_products_api
     return get_new_products_api()
 
 @app.route('/update_new_product/<string:product_id>', methods=['POST'])

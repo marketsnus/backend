@@ -47,6 +47,7 @@
                         <a class="nav-link" href="#payment">Платежные данные</a>
                         <a class="nav-link" href="#admin">Админ панель</a>
                         <a class="nav-link" href="#errors">Обработка ошибок</a>
+                        <a class="nav-link" href="#new_products">Новинки</a>
                     </nav>
                 </div>
             </div>
@@ -208,6 +209,28 @@
     "error": "Описание ошибки"
 }</code></pre>
                         </div>
+                    </div>
+                </section>
+
+                <section id="new_products" class="mb-5">
+                    <h2>Новинки</h2>
+                    <div class="endpoint">
+                        <span class="method get">GET</span>
+                        <code>/api/new_products</code>
+                        <p class="mt-2">Получение списка всех новинок</p>
+                        <h5>Пример ответа:</h5>
+                        <pre class="response-example"><code>{
+    "success": true,
+    "products": [
+        {
+            "id": "uuid-string",
+            "name": "Название новинки",
+            "description": "Описание новинки",
+            "s3_url": "https://storage.yandexcloud.net/...",
+            "created_at": "2024-02-16 15:30:00"
+        }
+    ]
+}</code></pre>
                     </div>
                 </section>
             </main>
