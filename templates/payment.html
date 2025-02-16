@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Управление платежными данными</h2>
+    
+    <!-- Форма добавления -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Добавить новые платежные данные</h5>
+        </div>
+        <div class="card-body">
+            <form id="paymentForm">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="account_number" class="form-label">Номер счета</label>
+                        <input type="text" class="form-control" id="account_number" name="account_number" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="bank_name" class="form-label">Банк</label>
+                        <input type="text" class="form-control" id="bank_name" name="bank_name" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="recipient_name" class="form-label">Имя получателя</label>
+                        <input type="text" class="form-control" id="recipient_name" name="recipient_name" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Добавить</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Таблица с данными -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Существующие платежные данные</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Номер счета</th>
+                            <th>Банк</th>
+                            <th>Имя получателя</th>
+                            <th>Статус</th>
+                            <th>Дата добавления</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.account_number }}</td>
+                            <td>{{ payment.bank_name }}</td>
+                            <td>{{ payment.recipient_name }}</td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" 
+                                           {% if payment.active %}checked{% endif %}
+                                           onchange="togglePayment({{ payment.id }}, this)"
+                                           style="cursor: pointer;">
+                                    <label class="form-check-label">
+                                        {% if payment.active %}
+                                        <span class="badge bg-success">Активен</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Неактивен</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            </td>
+                            <td>{{ payment.created_at }}</td>
+                            <td>
+                                <button type="button" class="btn btn-primary btn-sm me-1" onclick="editPayment({{ payment.id }}, this)">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="deletePayment({{ payment.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Добавим модальное окно для редактирования -->
+<div class="modal fade" id="editPaymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать платежные данные</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editPaymentForm">
+                    <input type="hidden" id="edit_payment_id">
+                    <div class="mb-3">
+                        <label for="edit_account_number" class="form-label">Номер счета</label>
+                        <input type="text" class="form-control" id="edit_account_number" name="account_number" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_bank_name" class="form-label">Банк</label>
+                        <input type="text" class="form-control" id="edit_bank_name" name="bank_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_recipient_name" class="form-label">Имя получателя</label>
+                        <input type="text" class="form-control" id="edit_recipient_name" name="recipient_name" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="updatePayment()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('paymentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/add_payment', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Платежные данные успешно добавлены');
+            location.reload();
+        } else {
+            alert('Ошибка при добавлении: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка при добавлении: ' + error);
+    });
+});
+
+function deletePayment(paymentId) {
+    if (confirm('Вы уверены, что хотите удалить эти платежные данные?')) {
+        fetch(`/delete_payment/${paymentId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка при удалении: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Ошибка при удалении: ' + error);
+        });
+    }
+}
+
+function togglePayment(paymentId, checkbox) {
+    fetch(`/toggle_payment/${paymentId}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload(); // Перезагружаем страницу для обновления всех статусов
+        } else {
+            alert('Ошибка при изменении статуса: ' + data.error);
+            checkbox.checked = !checkbox.checked; // Возвращаем переключатель в предыдущее состояние
+        }
+    })
+    .catch(error => {
+        alert('Ошибка при изменении статуса: ' + error);
+        checkbox.checked = !checkbox.checked;
+    });
+}
+
+let editModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    editModal = new bootstrap.Modal(document.getElementById('editPaymentModal'));
+});
+
+function editPayment(paymentId, button) {
+    const row = button.closest('tr');
+    const accountNumber = row.cells[0].textContent;
+    const bankName = row.cells[1].textContent;
+    const recipientName = row.cells[2].textContent;
+
+    document.getElementById('edit_payment_id').value = paymentId;
+    document.getElementById('edit_account_number').value = accountNumber;
+    document.getElementById('edit_bank_name').value = bankName;
+    document.getElementById('edit_recipient_name').value = recipientName;
+
+    editModal.show();
+}
+
+function updatePayment() {
+    const paymentId = document.getElementById('edit_payment_id').value;
+    const formData = new FormData(document.getElementById('editPaymentForm'));
+    
+    fetch(`/update_payment/${paymentId}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Платежные данные успешно обновлены');
+            location.reload();
+        } else {
+            alert('Ошибка при обновлении: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка при обновлении: ' + error);
+    });
+}
+</script>
+{% endblock %} 
