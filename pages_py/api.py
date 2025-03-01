@@ -1,5 +1,8 @@
 from flask import jsonify
 from modules.models import db
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_promo(app, Image):
     with app.app_context():

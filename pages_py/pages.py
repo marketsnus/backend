@@ -1,5 +1,8 @@
 from flask import render_template
 from modules.models import db
+import logging
+
+logger = logging.getLogger(__name__)
 
 def promo_page(app, Image):
     with app.app_context():

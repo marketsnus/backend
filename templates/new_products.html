@@ -138,18 +138,24 @@ function submitNewProduct() {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(data => {
-        if (data.success) {
+        if (data) {
             alert('Новинка успешно добавлена');
             addModal.hide();
             location.reload();
         } else {
-            alert('Ошибка при добавлении: ' + data.error);
+            alert('Ошибка при добавлении');
         }
     })
     .catch(error => {
-        alert('Ошибка при добавлении: ' + error);
+        console.error('Error:', error);
+        alert('Ошибка при добавлении: ' + error.message);
     });
 }
 

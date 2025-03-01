@@ -4,6 +4,9 @@ from modules.s3_controller import upload_image_to_s3, delete_image_from_s3
 import os
 import uuid
 from werkzeug.utils import secure_filename
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_metadata_value(key, default=''):
     metadata = Metadata.query.filter_by(key=key).first()
@@ -22,10 +25,10 @@ def upload_category_image(file, category):
     # Загружаем в S3
     if upload_image_to_s3(temp_path, filename):
         s3_url = f"https://sqwonkerb.storage.yandexcloud.net/{filename}"
-        os.remove(temp_path)  # Удаляем временный файл
+        os.remove(temp_path) 
         return s3_url
     
-    os.remove(temp_path)  # Удаляем временный файл в случае ошибки
+    os.remove(temp_path)
     raise Exception("Ошибка загрузки файла в S3")
 
 def update_metadata_handler():
@@ -33,7 +36,6 @@ def update_metadata_handler():
         support_link = request.form.get('support_link', '')
         maintenance_mode = request.form.get('maintenance_mode', 'false')
         
-        # Обновляем ссылку тех. поддержки
         support = Metadata.query.filter_by(key='support_link').first()
         if not support:
             support = Metadata(key='support_link', value=support_link, description='Ссылка на техподдержку')
@@ -58,13 +60,11 @@ def update_metadata_handler():
                     try:
                         s3_url = upload_category_image(file, category)
                         
-                        # Удаляем старое изображение из S3, если оно есть
                         old_metadata = Metadata.query.filter_by(key=f'category_image_{category}').first()
                         if old_metadata and old_metadata.value:
                             old_filename = old_metadata.value.split('/')[-1]
                             delete_image_from_s3(old_filename)
                         
-                        # Сохраняем новый URL
                         if not old_metadata:
                             metadata = Metadata(
                                 key=f'category_image_{category}',
@@ -81,7 +81,7 @@ def update_metadata_handler():
         return jsonify({'success': True}), 200
 
     except Exception as e:
-        db.session.rollback()
+        logger.error(f'Ошибка при обновлении метаданных: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 def delete_category_image(category):
@@ -97,7 +97,7 @@ def delete_category_image(category):
             return jsonify({'error': 'Ошибка удаления из S3'}), 500
         return jsonify({'error': 'Изображение не найдено'}), 404
     except Exception as e:
-        db.session.rollback()
+        logger.error(f'Ошибка при удалении изображения категории {category}: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 def metadata_page():

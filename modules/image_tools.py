@@ -3,6 +3,9 @@ from werkzeug.utils import secure_filename
 import os
 import uuid
 from modules.s3_controller import upload_image_to_s3, delete_image_from_s3
+import logging
+
+logger = logging.getLogger(__name__)
 
 def upload_promo_image(app, promo_app, Image, promo_db):
     try:
@@ -48,10 +51,14 @@ def upload_promo_image(app, promo_app, Image, promo_db):
             except Exception as e:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
+                logger.error(f'Ошибка при загрузке промо изображения: {str(e)}')
                 promo_db.session.rollback()
                 return jsonify({'error': str(e)}), 500
 
     except Exception as e:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        logger.error(f'Ошибка при загрузке промо изображения: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 def delete_promo_image(promo_app, Image, promo_db, image_id):
@@ -64,6 +71,7 @@ def delete_promo_image(promo_app, Image, promo_db, image_id):
                 return jsonify({'success': True}), 200
             return jsonify({'error': 'Ошибка удаления из S3'}), 500
     except Exception as e:
+        logger.error(f'Ошибка при удалении промо изображения {image_id}: {str(e)}')
         promo_db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
@@ -76,6 +84,7 @@ def update_promo_image(promo_app, Image, promo_db, image_id):
             promo_db.session.commit()
             return jsonify(image.to_dict()), 200
     except Exception as e:
+        logger.error(f'Ошибка при обновлении промо изображения {image_id}: {str(e)}')
         promo_db.session.rollback()
         return jsonify({'error': str(e)}), 500
 

@@ -5,6 +5,9 @@ import uuid
 import sys
 from modules.s3_controller import upload_image_to_s3, delete_image_from_s3
 from modules.models import db, Promo
+import logging
+
+logger = logging.getLogger(__name__)
 
 def upload_image_handler(app):
     if 'image' not in request.files:
@@ -49,7 +52,7 @@ def upload_image_handler(app):
     except Exception as e:
         if 'temp_path' in locals() and os.path.exists(temp_path):
             os.remove(temp_path)
-        db.session.rollback()
+        logger.error(f'Ошибка при загрузке изображения: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 def delete_image_handler(image_id):
@@ -62,7 +65,7 @@ def delete_image_handler(image_id):
         else:
             return jsonify({'error': 'Ошибка удаления из S3'}), 500
     except Exception as e:
-        db.session.rollback()
+        logger.error(f'Ошибка при удалении изображения {image_id}: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 def update_image_handler(image_id):
@@ -73,5 +76,5 @@ def update_image_handler(image_id):
         db.session.commit()
         return jsonify(image.to_dict()), 200
     except Exception as e:
-        db.session.rollback()
+        logger.error(f'Ошибка при обновлении изображения {image_id}: {str(e)}')
         return jsonify({'error': str(e)}), 500
