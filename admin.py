@@ -226,5 +226,5 @@ if __name__ == '__main__':
             admin.set_password('admin')
             db.session.add(admin)
             db.session.commit()
-            print("Создан пользователь admin с паролем admin")
+            print("Создан пользователь admin с паролем admin!")
     app.run(debug=True) 
