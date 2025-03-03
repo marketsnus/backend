@@ -118,29 +118,24 @@ def update_product(product_id):
 
 
 @app.route('/api/promo', methods=['GET'])
-@login_required
 def get_promo_route():
     return get_promo(app, Promo)
 
 @app.route('/api/bestSales', methods=['GET'])
-@login_required
 def get_bestsales_route():
     return get_bestsales(app, Bestsales)
 
 @app.route('/api/metadata', methods=['GET'])
-@login_required
 def get_metadata_route():
     from pages_py.metadata import get_metadata_api
     return get_metadata_api()
 
 @app.route('/api/payment', methods=['GET'])
-@login_required
 def get_payment_route():
     from pages_py.payment import get_payment_api
     return get_payment_api()
 
 @app.route('/api/payments/all', methods=['GET'])
-@login_required
 def get_all_payments_route():
     from pages_py.payment import get_all_payments_api
     return get_all_payments_api()
@@ -203,7 +198,6 @@ def delete_new_product(product_id):
     return delete_new_product_handler(product_id)
 
 @app.route('/api/new_products', methods=['GET'])
-@login_required
 def get_new_products_api_route():
     """API маршрут для получения списка новинок"""
     from pages_py.new_products import get_new_products_api
