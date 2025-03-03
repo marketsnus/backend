@@ -41,6 +41,13 @@ def init_database():
     try:
         with app.app_context():
             db.create_all()
+            # Создаем админа, если его нет
+            if not User.query.filter_by(username='admin').first():
+                admin = User(username='admin')
+                admin.set_password('admin')
+                db.session.add(admin)
+                db.session.commit()
+                print("Создан пользователь admin с паролем admin")
     except Exception as e:
         print(f"Ошибка при инициализации базы данных: {str(e)}")
         raise
@@ -223,12 +230,5 @@ def api_root_options():
     return handle_options_request()
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        if not User.query.filter_by(username='admin').first():
-            admin = User(username='admin')
-            admin.set_password('admin')
-            db.session.add(admin)
-            db.session.commit()
-            print("Создан пользователь admin с паролем admin!")
+    init_database()  # Инициализируем базу данных при запуске
     app.run(debug=True) 
