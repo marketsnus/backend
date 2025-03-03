@@ -224,6 +224,10 @@ def after_request(response):
 def api_options(path):
     return handle_options_request()
 
+@app.route('/api/', methods=['OPTIONS'])
+def api_root_options():
+    return handle_options_request()
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
