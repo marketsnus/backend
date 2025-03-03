@@ -230,5 +230,12 @@ def api_root_options():
     return handle_options_request()
 
 if __name__ == '__main__':
-    init_database()  # Инициализируем базу данных при запуске
+    with app.app_context():
+        db.create_all()
+        if not User.query.filter_by(username='admin').first():
+            admin = User(username='admin')
+            admin.set_password('admin')
+            db.session.add(admin)
+            db.session.commit()
+            print("Создан пользователь admin с паролем admin!")
     app.run(debug=True) 
