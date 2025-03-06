@@ -336,7 +336,8 @@ function showCurrentMapData() {
     fetch('/get_map_data')
         .then(response => response.json())
         .then(data => {
-            const formattedJson = JSON.stringify(JSON.parse(data.map_data), null, 2);
+            // Теперь данные уже в нужном формате, просто форматируем их для отображения
+            const formattedJson = JSON.stringify(data.map_data, null, 2);
             document.getElementById('currentMapData').textContent = formattedJson;
             new bootstrap.Modal(document.getElementById('mapDataModal')).show();
         })

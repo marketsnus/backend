@@ -104,7 +104,13 @@ def delete_category_image(category):
 def get_map_data():
     """Получение Map данных из БД"""
     metadata = Metadata.query.filter_by(key='map_data').first()
-    return metadata.value if metadata else ''
+    if metadata and metadata.value:
+        try:
+            # Парсим JSON для проверки валидности и сразу возвращаем его
+            return json.loads(metadata.value)
+        except json.JSONDecodeError:
+            return ''
+    return ''
 
 def save_map_data(json_data):
     """Сохранение Map данных в БД"""
