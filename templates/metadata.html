@@ -173,7 +173,29 @@
             </div>
         </div>
 
-        <!-- Технические работы -->
+        <!-- Map данные -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Map данные</h5>
+                <button type="button" class="btn btn-info" onclick="showCurrentMapData()">
+                    <i class="fas fa-eye"></i> Показать текущие данные
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="json_input" class="form-label">Введите Map данные</label>
+                    <textarea class="form-control mb-2" id="json_input" rows="5" placeholder="Введите Map данные здесь"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="json_file" class="form-label">Или загрузите файл</label>
+                    <input type="file" class="form-control" id="json_file" accept=".json,.geojson,.topojson">
+                    <small class="text-muted">Поддерживаемые форматы: JSON, GeoJSON, TopoJSON</small>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="importJSON()">Импортировать Map</button>
+            </div>
+        </div>
+
+        <!-- Технические работы (перемещено в конец) -->
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="mb-0">Технические работы</h5>
@@ -189,6 +211,24 @@
 
         <button type="submit" class="btn btn-primary">Сохранить изменения</button>
     </form>
+</div>
+
+<!-- Модальное окно для отображения текущих данных -->
+<div class="modal fade" id="mapDataModal" tabindex="-1" aria-labelledby="mapDataModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapDataModalLabel">Текущие Map данные</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="currentMapData" class="bg-light p-3" style="max-height: 500px; overflow-y: auto;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% endblock %}
@@ -290,6 +330,74 @@ function saveSupportLink() {
     .catch(error => {
         alert('Ошибка при сохранении: ' + error);
     });
+}
+
+function showCurrentMapData() {
+    fetch('/get_map_data')
+        .then(response => response.json())
+        .then(data => {
+            const formattedJson = JSON.stringify(JSON.parse(data.map_data), null, 2);
+            document.getElementById('currentMapData').textContent = formattedJson;
+            new bootstrap.Modal(document.getElementById('mapDataModal')).show();
+        })
+        .catch(error => {
+            alert('Ошибка при получении данных: ' + error);
+        });
+}
+
+function importJSON() {
+    const jsonInput = document.getElementById('json_input').value;
+    const jsonFile = document.getElementById('json_file').files[0];
+    
+    if (!jsonInput && !jsonFile) {
+        alert('Пожалуйста, введите Map данные или выберите файл');
+        return;
+    }
+
+    if (jsonFile) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            validateAndSendData(e.target.result);
+        };
+        reader.readAsText(jsonFile);
+    } else {
+        validateAndSendData(jsonInput);
+    }
+}
+
+function validateAndSendData(data) {
+    try {
+        // Пытаемся распарсить JSON
+        const parsedData = JSON.parse(data);
+        
+        // Проверяем, является ли это GeoJSON
+        if (parsedData.type && parsedData.features) {
+            // Это похоже на GeoJSON, дополнительная валидация не требуется
+        }
+        
+        const formData = new FormData();
+        formData.append('json_data', data);
+
+        fetch('/import_json_metadata', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Map данные успешно сохранены');
+                document.getElementById('json_input').value = '';
+                document.getElementById('json_file').value = '';
+            } else {
+                alert('Ошибка при сохранении: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Ошибка при сохранении: ' + error);
+        });
+    } catch (e) {
+        alert('Ошибка: Неверный формат данных');
+    }
 }
 </script>
 {% endblock %} 

@@ -6,10 +6,11 @@ from login.login import before_request, login_function
 from modules.models import db, Promo, Bestsales, User
 from pages_py.api import get_promo, get_bestsales
 from pages_py.pages import promo_page, bestsales_page
-from pages_py.metadata import metadata_page, update_metadata_handler, delete_category_image
+from pages_py.metadata import metadata_page, update_metadata_handler, delete_category_image, import_json_metadata
 from pages_py.payment import payment_page, add_payment_info, delete_payment_info
 from middleware.cors import add_cors_headers, handle_options_request
 from pages_py.new_products import new_products_page, upload_new_product_handler, delete_new_product_handler, get_new_products_api, update_new_product_handler
+
 
 app = Flask(__name__, 
     template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'),
@@ -36,21 +37,6 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login_router'
 
-def init_database():
-    """Инициализация базы данных"""
-    try:
-        with app.app_context():
-            db.create_all()
-            # Создаем админа, если его нет
-            if not User.query.filter_by(username='admin').first():
-                admin = User(username='admin')
-                admin.set_password('admin')
-                db.session.add(admin)
-                db.session.commit()
-                print("Создан пользователь admin с паролем admin")
-    except Exception as e:
-        print(f"Ошибка при инициализации базы данных: {str(e)}")
-        raise
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -215,6 +201,17 @@ def get_new_products_api_route():
 def update_new_product(product_id):
     return update_new_product_handler(product_id)
 
+@app.route('/import_json_metadata', methods=['POST'])
+@login_required
+def import_json_metadata_route():
+    return import_json_metadata()
+
+@app.route('/get_map_data', methods=['GET'])
+@login_required
+def get_map_data_route():
+    from pages_py.metadata import get_map_data
+    return jsonify({'map_data': get_map_data()})
+
 @app.after_request
 def after_request(response):
     if request.path.startswith('/api/'):
@@ -234,8 +231,8 @@ if __name__ == '__main__':
         db.create_all()
         if not User.query.filter_by(username='admin').first():
             admin = User(username='admin')
-            admin.set_password('admin')
+            admin_password = os.getenv('ADMIN_PASSWORD')
+            admin.set_password(admin_password)
             db.session.add(admin)
             db.session.commit()
-            print("Создан пользователь admin с паролем admin!")
     app.run(host='0.0.0.0', port=5000, debug=True) 

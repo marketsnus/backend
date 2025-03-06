@@ -5,6 +5,7 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -100,10 +101,30 @@ def delete_category_image(category):
         logger.error(f'Ошибка при удалении изображения категории {category}: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
+def get_map_data():
+    """Получение Map данных из БД"""
+    metadata = Metadata.query.filter_by(key='map_data').first()
+    return metadata.value if metadata else ''
+
+def save_map_data(json_data):
+    """Сохранение Map данных в БД"""
+    metadata = Metadata.query.filter_by(key='map_data').first()
+    if metadata:
+        metadata.value = json_data
+    else:
+        metadata = Metadata(
+            key='map_data',
+            value=json_data,
+            description='Map данные'
+        )
+        db.session.add(metadata)
+    db.session.commit()
+
 def metadata_page():
     metadata = {
         'support_link': get_metadata_value('support_link'),
         'maintenance_mode': get_metadata_value('maintenance_mode', 'false'),
+        'map_data': get_map_data(),
         'category_images': {
             'snus': get_metadata_value('category_image_snus'),
             'disposable': get_metadata_value('category_image_disposable'),
@@ -120,6 +141,7 @@ def get_metadata_api():
         metadata = {
             'support_link': get_metadata_value('support_link'),
             'maintenance_mode': get_metadata_value('maintenance_mode', 'false') == 'true',
+            'map_data': get_map_data(),
             'category_images': {
                 'snus': get_metadata_value('category_image_snus'),
                 'disposable': get_metadata_value('category_image_disposable'),
@@ -130,4 +152,24 @@ def get_metadata_api():
         }
         return jsonify(metadata), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500 
+        return jsonify({'error': str(e)}), 500
+
+def import_json_metadata():
+    try:
+        json_data = request.form.get('json_data')
+        if not json_data:
+            return jsonify({'error': 'Данные не предоставлены'}), 400
+
+        # Проверяем валидность JSON
+        try:
+            json.loads(json_data)
+        except json.JSONDecodeError:
+            return jsonify({'error': 'Неверный формат данных'}), 400
+
+        # Сохраняем map данные
+        save_map_data(json_data)
+        return jsonify({'success': True}), 200
+
+    except Exception as e:
+        logger.error(f'Ошибка при импорте Map данных: {str(e)}')
+        return jsonify({'error': str(e)}), 500
