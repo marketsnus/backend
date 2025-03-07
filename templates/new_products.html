@@ -21,6 +21,8 @@
                         <tr>
                             <th>Изображение</th>
                             <th>Название</th>
+                            <th>ID товара</th>
+                            <th>Цена</th>
                             <th>Описание</th>
                             <th>Дата добавления</th>
                             <th>Действия</th>
@@ -34,12 +36,14 @@
                                      style="height: 100px; object-fit: cover;">
                             </td>
                             <td>{{ product.name }}</td>
+                            <td>{{ product.product_id }}</td>
+                            <td>{{ product.price }}₽</td>
                             <td>{{ product.description }}</td>
                             <td>{{ product.created_at }}</td>
                             <td>
                                 <div class="d-flex gap-2">
                                     <button type="button" class="btn btn-primary btn-sm" 
-                                            onclick="editProduct('{{ product.id }}', '{{ product.name }}', '{{ product.description }}')"
+                                            onclick="editProduct('{{ product.id }}', '{{ product.name }}', '{{ product.description }}', '{{ product.product_id }}', '{{ product.price }}', '{{ product.category }}')"
                                             title="Редактировать">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -74,6 +78,25 @@
                         <input type="text" class="form-control" id="name" name="name" required>
                     </div>
                     <div class="mb-3">
+                        <label for="product_id" class="form-label">ID товара</label>
+                        <input type="text" class="form-control" id="product_id" name="product_id" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="price" class="form-label">Цена</label>
+                        <input type="number" step="0.01" class="form-control" id="price" name="price" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Категория</label>
+                        <select class="form-select" id="category" name="category" required>
+                            <option value="">Выберите категорию</option>
+                            <option value="snus">Снюс</option>
+                            <option value="disposable">Одноразки</option>
+                            <option value="liquids">Жидкости</option>
+                            <option value="pod_systems">POD-системы</option>
+                            <option value="accessories">Расходники</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label for="description" class="form-label">Описание</label>
                         <textarea class="form-control" id="description" name="description" rows="3"></textarea>
                     </div>
@@ -105,6 +128,25 @@
                     <div class="mb-3">
                         <label for="edit_name" class="form-label">Название</label>
                         <input type="text" class="form-control" id="edit_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_product_id" class="form-label">ID товара</label>
+                        <input type="text" class="form-control" id="edit_product_id" name="product_id" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_price" class="form-label">Цена</label>
+                        <input type="number" step="0.01" class="form-control" id="edit_price" name="price" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_category" class="form-label">Категория</label>
+                        <select class="form-select" id="edit_category" name="category" required>
+                            <option value="">Выберите категорию</option>
+                            <option value="snus">Снюс</option>
+                            <option value="disposable">Одноразки</option>
+                            <option value="liquids">Жидкости</option>
+                            <option value="pod_systems">POD-системы</option>
+                            <option value="accessories">Расходники</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="edit_description" class="form-label">Описание</label>
@@ -159,10 +201,13 @@ function submitNewProduct() {
     });
 }
 
-function editProduct(id, name, description) {
+function editProduct(id, name, description, product_id, price, category) {
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_name').value = name;
     document.getElementById('edit_description').value = description;
+    document.getElementById('edit_product_id').value = product_id;
+    document.getElementById('edit_price').value = price;
+    document.getElementById('edit_category').value = category;
     editModal.show();
 }
 
@@ -170,6 +215,9 @@ function updateProduct() {
     const id = document.getElementById('edit_id').value;
     const name = document.getElementById('edit_name').value;
     const description = document.getElementById('edit_description').value;
+    const product_id = document.getElementById('edit_product_id').value;
+    const price = document.getElementById('edit_price').value;
+    const category = document.getElementById('edit_category').value;
     
     fetch(`/update_new_product/${id}`, {
         method: 'POST',
@@ -178,7 +226,10 @@ function updateProduct() {
         },
         body: JSON.stringify({
             name: name,
-            description: description
+            description: description,
+            product_id: product_id,
+            price: price,
+            category: category
         })
     })
     .then(response => response.json())

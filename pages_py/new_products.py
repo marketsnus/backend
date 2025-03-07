@@ -25,9 +25,12 @@ def upload_new_product_handler(app):
     file = request.files['image']
     name = request.form.get('name')
     description = request.form.get('description')
+    product_id = request.form.get('product_id')
+    price = float(request.form.get('price', 0))
+    category = request.form.get('category')
     
-    if not all([file, name]):
-        logger.warning(f'Неполные данные при загрузке: name={name}, file={bool(file)}')
+    if not all([file, name, product_id, price, category]):
+        logger.warning(f'Неполные данные при загрузке: name={name}, file={bool(file)}, product_id={product_id}, price={price}, category={category}')
         return jsonify({'error': 'Все поля должны быть заполнены'}), 400
 
     try:
@@ -44,19 +47,22 @@ def upload_new_product_handler(app):
             logger.info(f'Файл успешно загружен в S3: {filename}')
             s3_url = f"https://sqwonkerb.storage.yandexcloud.net/{filename}"
 
-            product = NewProducts(
+            new_product = NewProducts(
                 id=product_id,
                 filename=filename,
                 name=name,
                 description=description,
+                product_id=product_id,
+                price=price,
+                category=category,
                 s3_url=s3_url
             )
-            db.session.add(product)
+            db.session.add(new_product)
             db.session.commit()
             logger.info(f'Новая запись добавлена в БД: {product_id}')
 
             os.remove(temp_path)
-            return jsonify(product.to_dict()), 200
+            return jsonify({'success': True}), 200
         else:
             logger.error(f'Ошибка загрузки файла в S3: {filename}')
             if os.path.exists(temp_path):
@@ -108,6 +114,8 @@ def update_new_product_handler(product_id):
     data = request.get_json()
     name = data.get('name')
     description = data.get('description')
+    product_id = data.get('product_id')
+    price = data.get('price')
     
     if not name:
         logger.warning(f'Попытка обновления без названия: {product_id}')

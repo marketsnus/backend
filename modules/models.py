@@ -98,6 +98,9 @@ class NewProducts(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
+    product_id = db.Column(db.String(100), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    category = db.Column(db.String(50), nullable=False)
     s3_url = db.Column(db.String(512), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -107,6 +110,9 @@ class NewProducts(db.Model):
             'filename': self.filename,
             'name': self.name,
             'description': self.description,
+            'product_id': self.product_id,
+            'price': self.price,
+            'category': self.category,
             's3_url': self.s3_url,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
         } 
