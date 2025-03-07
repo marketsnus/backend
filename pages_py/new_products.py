@@ -34,9 +34,10 @@ def upload_new_product_handler(app):
         return jsonify({'error': 'Все поля должны быть заполнены'}), 400
 
     try:
-        product_id = str(uuid.uuid4())
+        # Используем ID файла для уникального имени файла, но сохраняем введенный product_id
+        file_id = str(uuid.uuid4())
         original_filename = secure_filename(file.filename)
-        filename = f"{product_id}_{original_filename}"
+        filename = f"{file_id}_{original_filename}"
         logger.info(f'Начало загрузки файла: {filename}')
 
         temp_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -48,11 +49,11 @@ def upload_new_product_handler(app):
             s3_url = f"https://sqwonkerb.storage.yandexcloud.net/{filename}"
 
             new_product = NewProducts(
-                id=product_id,
+                id=product_id,  # Используем ID, введенный пользователем
                 filename=filename,
                 name=name,
                 description=description,
-                product_id=product_id,
+                product_id=product_id,  # Используем ID, введенный пользователем
                 price=price,
                 category=category,
                 s3_url=s3_url
@@ -101,7 +102,11 @@ def get_new_products_api():
             'id': product.id,
             'name': product.name,
             'description': product.description,
+            'product_id': product.product_id,
+            'price': product.price,
+            'category': product.category,
             's3_url': product.s3_url,
+            'filename': product.filename,
             'created_at': product.created_at.strftime('%Y-%m-%d %H:%M:%S')
         } for product in products]
     }), 200

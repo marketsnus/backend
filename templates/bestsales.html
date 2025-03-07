@@ -3,56 +3,59 @@
 {% block title %}Топ продаж{% endblock %}
 
 {% block content %}
-<div class="container py-5">
+<div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Топ продаж</h1>
+        <h2>Управление топ продажами</h2>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
             <i class="fas fa-plus me-2"></i>Добавить товар
         </button>
     </div>
 
-    <!-- Таблица товаров -->
+    <!-- Таблица с существующими товарами -->
     <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Топ продажи</h5>
+        </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="table table-bordered">
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Изображение</th>
                             <th>Название</th>
                             <th>Категория</th>
                             <th>Цена</th>
+                            <th>Дата добавления</th>
                             <th>Действия</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for product in products %}
                         <tr>
-                            <td>{{ product.id }}</td>
                             <td>
-                                <img src="{{ product.s3_url }}" 
-                                     alt="{{ product.name }}"
-                                     style="width: 50px; height: 50px; object-fit: cover;"
-                                     onerror="console.log('Ошибка загрузки изображения:', this.src)">
+                                {% if product.s3_url %}
+                                    <img src="{{ product.s3_url }}" alt="{{ product.name }}" style="width: 100px; height: 100px; object-fit: contain;">
+                                {% else %}
+                                    <div class="text-center text-muted">Нет изображения</div>
+                                {% endif %}
                             </td>
                             <td>{{ product.name }}</td>
                             <td>{{ product.category }}</td>
-                            <td>{{ product.price }}</td>
+                            <td>{{ product.price }}₽</td>
+                            <td>{{ product.created_at }}</td>
                             <td>
-                                <button class="btn btn-primary btn-sm edit-btn me-1" 
-                                        data-id="{{ product.id }}"
-                                        data-name="{{ product.name }}"
-                                        data-category="{{ product.category }}"
-                                        data-price="{{ product.price }}"
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#editProductModal">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-danger btn-sm delete-btn" 
-                                        data-id="{{ product.id }}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-primary btn-sm" 
+                                            onclick="editProduct('{{ product.id }}', '{{ product.name }}', '{{ product.category }}', '{{ product.price }}')"
+                                            title="Редактировать">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-sm" 
+                                            onclick="deleteProduct('{{ product.id }}')"
+                                            title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -82,8 +85,15 @@
                         <input type="text" class="form-control" id="productName" name="name" required>
                     </div>
                     <div class="mb-3">
-                        <label for="productCategory" class="form-label">Категория</label>
-                        <input type="text" class="form-control" id="productCategory" name="category" required>
+                        <label for="category">Категория</label>
+                        <select class="form-control" id="category" name="category" required>
+                            <option value="" selected disabled>Не выбрано</option>
+                            <option value="Снюс">Снюс</option>
+                            <option value="Одноразки">Одноразки</option>
+                            <option value="Жидкости">Жидкости</option>
+                            <option value="POD-системы">POD-системы</option>
+                            <option value="Расходники">Расходники</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="productPrice" class="form-label">Цена</label>
@@ -120,7 +130,14 @@
                     </div>
                     <div class="mb-3">
                         <label for="editCategory" class="form-label">Категория</label>
-                        <input type="text" class="form-control" id="editCategory" name="category" required>
+                        <select class="form-control" id="editCategory" name="category" required>
+                            <option value="" disabled>Не выбрано</option>
+                            <option value="Снюс">Снюс</option>
+                            <option value="Одноразки">Одноразки</option>
+                            <option value="Жидкости">Жидкости</option>
+                            <option value="POD-системы">POD-системы</option>
+                            <option value="Расходники">Расходники</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="editPrice" class="form-label">Цена</label>
@@ -141,66 +158,41 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // Добавление товара
-    document.getElementById('submitProduct').addEventListener('click', async function() {
-        const form = document.getElementById('productForm');
-        const formData = new FormData(form);
-        
-        try {
-            const response = await fetch('/add_product', {
-                method: 'POST',
-                body: formData
-            });
-            
-            if (response.ok) {
-                window.location.reload();
+    document.getElementById('submitProduct').addEventListener('click', function() {
+        const formData = new FormData();
+        formData.append('name', document.getElementById('productName').value);
+        formData.append('category', document.getElementById('category').value);
+        formData.append('price', document.getElementById('productPrice').value);
+        formData.append('id', document.getElementById('productId').value);
+        formData.append('image', document.getElementById('productImage').files[0]);
+
+        fetch('/add_product', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Ошибка: ' + data.error);
             } else {
-                const data = await response.json();
-                alert(data.error || 'Произошла ошибка при добавлении товара');
+                location.reload();
             }
-        } catch (error) {
-            alert('Произошла ошибка при добавлении товара');
-        }
-    });
-
-    // Удаление товара
-    document.querySelectorAll('.delete-btn').forEach(button => {
-        button.addEventListener('click', async function() {
-            if (confirm('Вы уверены, что хотите удалить этот товар?')) {
-                const productId = this.dataset.id;
-                try {
-                    const response = await fetch(`/delete_product/${productId}`, {
-                        method: 'POST'
-                    });
-                    
-                    if (response.ok) {
-                        window.location.reload();
-                    } else {
-                        const data = await response.json();
-                        alert(data.error || 'Произошла ошибка при удалении');
-                    }
-                } catch (error) {
-                    alert('Произошла ошибка при удалении');
-                }
-            }
+        })
+        .catch(error => {
+            alert('Ошибка: ' + error);
         });
     });
 
-    // Обработчик кнопки редактирования
-    document.querySelectorAll('.edit-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const id = this.dataset.id;
-            const name = this.dataset.name;
-            const category = this.dataset.category;
-            const price = this.dataset.price;
-            
-            document.getElementById('editProductId').value = id;
-            document.getElementById('editName').value = name;
-            document.getElementById('editCategory').value = category;
-            document.getElementById('editPrice').value = price;
-        });
-    });
+    // Редактирование товара
+    function editProduct(id, name, category, price) {
+        document.getElementById('editProductId').value = id;
+        document.getElementById('editName').value = name;
+        document.getElementById('editCategory').value = category;
+        document.getElementById('editPrice').value = price;
+        new bootstrap.Modal(document.getElementById('editProductModal')).show();
+    }
 
-    // Обработчик сохранения изменений
+    // Обновление товара
     document.getElementById('submitEdit').addEventListener('click', async function() {
         const id = document.getElementById('editProductId').value;
         const formData = new FormData(document.getElementById('editForm'));
@@ -221,5 +213,25 @@
             alert('Произошла ошибка при обновлении');
         }
     });
+
+    // Удаление товара
+    function deleteProduct(productId) {
+        if (confirm('Вы уверены, что хотите удалить этот товар?')) {
+            fetch(`/delete_product/${productId}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Ошибка при удалении: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Ошибка при удалении');
+            });
+        }
+    }
 </script>
 {% endblock %} 

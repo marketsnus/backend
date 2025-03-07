@@ -39,23 +39,24 @@ class Promo(db.Model):
 
 class Bestsales(db.Model):
     __tablename__ = 'bestsales_products'
-    id = db.Column(db.String(36), primary_key=True)
+    
+    id = db.Column(db.String(50), primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    category = db.Column(db.String(100), nullable=False)
     price = db.Column(db.Float, nullable=False)
-    s3_url = db.Column(db.String(512), nullable=False)
+    s3_url = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         return {
             'id': self.id,
-            'filename': self.filename,
             'name': self.name,
             'category': self.category,
             'price': self.price,
+            'filename': self.filename,
             's3_url': self.s3_url,
-            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S.%f') if self.created_at else None
         }
 
 class Metadata(db.Model):

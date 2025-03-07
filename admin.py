@@ -40,7 +40,7 @@ login_manager.login_view = 'login_router'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 
 @app.before_request
@@ -94,8 +94,8 @@ def update_image(image_id):
 @app.route('/add_product', methods=['POST'])
 @login_required
 def add_product():
-    from pages_py.BestSales import upload_product_handler
-    return upload_product_handler(app)
+    from pages_py.BestSales import upload_bestsale_handler
+    return upload_bestsale_handler(app)
 
 @app.route('/delete_product/<string:product_id>', methods=['POST'])
 @login_required

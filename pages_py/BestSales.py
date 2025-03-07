@@ -9,51 +9,62 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def upload_product_handler(app):
-    if 'image' not in request.files:
-        return jsonify({'error': 'Файл не выбран'}), 400
-
-    file = request.files['image']
-    name = request.form.get('name', '')
-    category = request.form.get('category', '')
-    price = request.form.get('price', 0)
-
-    if file.filename == '':
-        return jsonify({'error': 'Файл не выбран'}), 400
-
+def upload_bestsale_handler(app):
+    """Обработчик загрузки товара в топ продаж"""
     try:
-        product_id = str(uuid.uuid4())
-        original_filename = secure_filename(file.filename)
-        filename = f"{product_id}_{original_filename}"
+        if 'image' not in request.files:
+            return jsonify({'error': 'Нет файла изображения'}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'error': 'Файл не выбран'}), 400
 
-        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(temp_path)
+        # Получаем данные из формы
+        name = request.form.get('name')
+        category = request.form.get('category')
+        price = request.form.get('price')
+        product_id = request.form.get('id')
 
-        if upload_image_to_s3(temp_path, filename):
-            s3_url = f"https://sqwonkerb.storage.yandexcloud.net/{filename}"
+        if not all([name, category, price, product_id]):
+            return jsonify({'error': 'Не все поля заполнены'}), 400
 
-            new_product = Bestsales(
-                id=product_id,
-                filename=filename,
-                name=name,
-                category=category,
-                price=float(price),
-                s3_url=s3_url
-            )
-            db.session.add(new_product)
-            db.session.commit()
+        # Генерируем уникальное имя файла, сохраняя расширение оригинального файла
+        original_extension = os.path.splitext(file.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{original_extension}"
+        
+        # Сохраняем файл локально
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        file.save(file_path)
+        
+        # Загружаем файл в S3 и получаем URL
+        s3_url = upload_image_to_s3(file_path, unique_filename)
+        
+        # Удаляем локальный файл после загрузки
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
+        if not s3_url:
+            return jsonify({'error': 'Ошибка при загрузке файла в S3'}), 500
 
-            os.remove(temp_path)
-            return jsonify(new_product.to_dict()), 200
-        else:
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-            return jsonify({'error': 'Ошибка загрузки в S3'}), 500
+        # Создаем новый объект Bestsales
+        new_product = Bestsales(
+            id=product_id,
+            name=name,
+            category=category,
+            price=price,
+            filename=unique_filename,
+            s3_url=s3_url
+        )
+
+        db.session.add(new_product)
+        db.session.commit()
+        logger.info(f"Товар {product_id} успешно добавлен в базу данных")
+
+        return jsonify({'message': 'Товар успешно добавлен', 'id': new_product.id}), 200
 
     except Exception as e:
-        if 'temp_path' in locals() and os.path.exists(temp_path):
-            os.remove(temp_path)
-        logger.error(f'Ошибка при загрузке товара: {str(e)}')
+        logger.error(f"Ошибка при добавлении товара: {str(e)}")
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 def delete_product_handler(product_id):

@@ -23,6 +23,7 @@
                             <th>Название</th>
                             <th>ID товара</th>
                             <th>Цена</th>
+                            <th>Категория</th>
                             <th>Описание</th>
                             <th>Дата добавления</th>
                             <th>Действия</th>
@@ -38,6 +39,15 @@
                             <td>{{ product.name }}</td>
                             <td>{{ product.product_id }}</td>
                             <td>{{ product.price }}₽</td>
+                            <td>
+                                {% if product.category == 'snus' %}Снюс
+                                {% elif product.category == 'disposable' %}Одноразки
+                                {% elif product.category == 'liquids' %}Жидкости
+                                {% elif product.category == 'pod_systems' %}POD-системы
+                                {% elif product.category == 'accessories' %}Расходники
+                                {% else %}{{ product.category }}
+                                {% endif %}
+                            </td>
                             <td>{{ product.description }}</td>
                             <td>{{ product.created_at }}</td>
                             <td>

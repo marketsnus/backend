@@ -72,13 +72,15 @@ def upload_image_to_s3(file_path, object_name=None):
         response = requests.put(endpoint, headers=headers, data=file_content)
         if response.status_code == 200:
             print(f"Файл {file_path} успешно загружен в S3 как {object_name}")
-            return True
+            # Формируем URL для доступа к файлу
+            file_url = f"https://{YC_BUCKET_NAME}.{YC_ENDPOINT_URL.replace('https://', '')}/{object_name}"
+            return file_url
         else:
             print(f"Ошибка при загрузке файла: {response.status_code} - {response.text}")
-            return False
+            return None
     except Exception as e:
         print(f"Произошла ошибка: {e}")
-        return False
+        return None
 
 def delete_image_from_s3(object_name):
     now = datetime.now(timezone.utc)

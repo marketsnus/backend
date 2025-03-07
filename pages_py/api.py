@@ -26,15 +26,10 @@ def get_promo(app, Image):
         } for image in images])
         return response
 
-def get_bestsales(app, Product):
-    with app.app_context():
-        products = Product.query.all()
-        response = jsonify([{
-            'id': product.id,
-            'filename': product.filename,
-            'title': product.name,
-            'description': product.category,
-            'price': product.price,
-            's3_url': product.s3_url
-        } for product in products])
-        return response 
+def get_bestsales(app, Bestsales):
+    """Получение списка товаров из топ продаж"""
+    try:
+        products = Bestsales.query.all()
+        return jsonify([product.to_dict() for product in products])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500 
