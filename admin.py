@@ -10,11 +10,14 @@ from pages_py.metadata import metadata_page, update_metadata_handler, delete_cat
 from pages_py.payment import payment_page, add_payment_info, delete_payment_info
 from middleware.cors import add_cors_headers, handle_options_request
 from pages_py.new_products import new_products_page, upload_new_product_handler, delete_new_product_handler, get_new_products_api, update_new_product_handler
+from dotenv import load_dotenv
 
+load_dotenv('secrets/.env')
 
 app = Flask(__name__, 
     template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'),
     static_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static'))
+
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config.update(
@@ -227,6 +230,7 @@ def api_root_options():
     return handle_options_request()
 
 if __name__ == '__main__':
+
     with app.app_context():
         db.create_all()
         if not User.query.filter_by(username='admin').first():

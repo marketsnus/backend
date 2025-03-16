@@ -7,7 +7,7 @@ import base64
 from dotenv import load_dotenv
 
 
-load_dotenv()
+load_dotenv('secrets/.env')
 
 YC_ACCESS_KEY = os.getenv('YC_ACCESS_KEY')
 YC_SECRET_KEY = os.getenv('YC_SECRET_KEY')
