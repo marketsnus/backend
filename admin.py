@@ -11,7 +11,23 @@ from pages_py.payment import payment_page, add_payment_info, delete_payment_info
 from middleware.cors import add_cors_headers, handle_options_request
 from pages_py.new_products import new_products_page, upload_new_product_handler, delete_new_product_handler, get_new_products_api, update_new_product_handler
 from dotenv import load_dotenv
+import threading
+import asyncio
+import nest_asyncio
+from bot_handler import start_polling
+from pages_py.bot_settings import (
+    bot_settings_page, 
+    update_welcome_message, 
+    create_broadcast, 
+    send_broadcast, 
+    delete_broadcast,
+    get_broadcast_images
+)
 
+# Применяем патч для асинхронного выполнения в неасинхронном контексте
+nest_asyncio.apply()
+
+# Загрузка переменных окружения (у вас уже есть)
 load_dotenv('secrets/.env')
 
 app = Flask(__name__, 
@@ -215,6 +231,41 @@ def get_map_data_route():
     from pages_py.metadata import get_map_data
     return jsonify({'map_data': get_map_data()})
 
+@app.route('/bot_settings')
+@login_required
+def bot_settings_page_route():
+    return bot_settings_page()
+
+@app.route('/update_welcome_message', methods=['POST'])
+@login_required
+def update_welcome_message_route():
+    return update_welcome_message(app)
+
+@app.route('/create_broadcast', methods=['POST'])
+@login_required
+def create_broadcast_route():
+    return create_broadcast(app)
+
+@app.route('/send_broadcast/<int:broadcast_id>', methods=['POST'])
+@login_required
+def send_broadcast_route(broadcast_id):
+    return send_broadcast(broadcast_id)
+
+@app.route('/delete_broadcast/<int:broadcast_id>', methods=['POST'])
+@login_required
+def delete_broadcast_route(broadcast_id):
+    return delete_broadcast(broadcast_id)
+
+@app.route('/get_broadcast_images/<int:broadcast_id>', methods=['GET'])
+@login_required
+def get_broadcast_images_route(broadcast_id):
+    return get_broadcast_images(broadcast_id)
+
+@app.route('/resend_broadcast/<int:broadcast_id>', methods=['POST'])
+@login_required
+def resend_broadcast_route(broadcast_id):
+    return send_broadcast(broadcast_id)
+
 @app.after_request
 def after_request(response):
     if request.path.startswith('/api/'):
@@ -229,14 +280,28 @@ def api_options(path):
 def api_root_options():
     return handle_options_request()
 
-if __name__ == '__main__':
+def run_bot():
+    try:
+        asyncio.run(start_polling())
+    except Exception as e:
+        print(f"Ошибка при запуске бота: {e}")
 
+if __name__ == '__main__':
+    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        bot_thread = threading.Thread(target=run_bot)
+        bot_thread.daemon = True
+        bot_thread.start()
+    
     with app.app_context():
         db.create_all()
         if not User.query.filter_by(username='admin').first():
             admin = User(username='admin')
             admin_password = os.getenv('ADMIN_PASSWORD')
+            if admin_password is None:
+                admin_password = 'admin'
+                print("ВНИМАНИЕ: Используется пароль по умолчанию 'admin'. Установите ADMIN_PASSWORD в .env файле.")
             admin.set_password(admin_password)
             db.session.add(admin)
             db.session.commit()
+    
     app.run(host='0.0.0.0', port=5000, debug=True) 

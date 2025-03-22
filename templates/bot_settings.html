@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+
+{% block title %}Настройки бота{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>Настройки Telegram бота</h2>
+        </div>
+    </div>
+
+    <!-- Карточка с настройками приветственного сообщения -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Приветственное сообщение</h5>
+        </div>
+        <div class="card-body">
+            <form id="welcomeMessageForm" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="welcomeMessage" class="form-label">Текст приветственного сообщения</label>
+                    <textarea class="form-control" id="welcomeMessage" name="welcome_message" rows="5" required placeholder="Введите текст, который увидят пользователи при первом запуске бота">{{ settings.welcome_message }}</textarea>
+                    <div class="form-text">Это сообщение будет отправлено пользователю при первом запуске бота (/start).</div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="welcomeImage" class="form-label">Изображение (опционально)</label>
+                    <div class="input-group mb-3">
+                        <input type="file" class="form-control" id="welcomeImage" name="welcome_image" accept="image/*">
+                        <span class="input-group-text"><i class="fas fa-image"></i></span>
+                    </div>
+                    <div class="form-text mb-2">Изображение будет отправлено вместе с приветственным сообщением.</div>
+                    
+                    {% if settings.welcome_image_url %}
+                    <div class="mt-3 p-3 border rounded">
+                        <p class="mb-2 fw-bold">Текущее изображение:</p>
+                        <div class="text-center">
+                            <img src="{{ settings.welcome_image_url }}" alt="Приветственное изображение" class="img-fluid rounded" style="max-width: 300px; max-height: 300px;">
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i> Сохранить изменения
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Карточка с рассылками (упрощенная) -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">История рассылок</h5>
+            <button type="button" class="btn btn-primary create-broadcast-btn" data-bs-toggle="modal" data-bs-target="#createBroadcastModal">
+                <i class="fas fa-plus-circle me-1"></i> Создать рассылку
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Изображение</th>
+                            <th>Текст</th>
+                            <th>Статус</th>
+                            <th>Создана</th>
+                            <th>Отправлена</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for broadcast in broadcasts %}
+                        <tr>
+                            <td>
+                                {% if broadcast.s3_url %}
+                                <img src="{{ broadcast.s3_url }}" alt="Изображение" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
+                                {% else %}
+                                <span class="text-muted">Нет</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ broadcast.text }}</td>
+                            <td>
+                                {% if broadcast.status == 'pending' %}
+                                <span class="badge bg-warning">Ожидает отправки</span>
+                                {% elif broadcast.status == 'sent' %}
+                                <span class="badge bg-success">Отправлена</span>
+                                {% elif broadcast.status == 'failed' %}
+                                <span class="badge bg-danger">Ошибка</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ broadcast.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ broadcast.sent_at.strftime('%d.%m.%Y %H:%M') if broadcast.sent_at else '-' }}</td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    {% if broadcast.status == 'pending' %}
+                                    <button class="btn btn-sm btn-primary send-broadcast-btn" data-broadcast-id="{{ broadcast.id }}">Отправить</button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-primary resend-broadcast-btn" data-broadcast-id="{{ broadcast.id }}">Отправить повторно</button>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-danger delete-broadcast-btn" data-broadcast-id="{{ broadcast.id }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- После секции с рассылками добавляем новую карточку -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Пользователи бота</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>ID чата</th>
+                            <th>Имя пользователя</th>
+                            <th>Имя</th>
+                            <th>Фамилия</th>
+                            <th>Статус</th>
+                            <th>Дата регистрации</th>
+                            <th>Последняя активность</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.chat_id }}</td>
+                            <td>{{ user.username or '-' }}</td>
+                            <td>{{ user.first_name or '-' }}</td>
+                            <td>{{ user.last_name or '-' }}</td>
+                            <td>
+                                {% if user.is_active %}
+                                <span class="badge bg-success">Активен</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Неактивен</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.created_at }}</td>
+                            <td>{{ user.last_interaction }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% if users|length == 0 %}
+                        <tr>
+                            <td colspan="7" class="text-center">Нет пользователей</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно создания рассылки (упрощенное) -->
+<div class="modal fade" id="createBroadcastModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Создание рассылки</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="broadcastForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="broadcastText" class="form-label">Текст сообщения</label>
+                        <textarea class="form-control" id="broadcastText" name="text" rows="5" required></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Изображение (опционально)</label>
+                        <input type="file" class="form-control" name="image_0" accept="image/*">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="submitBroadcast">Создать</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Проверяем наличие FontAwesome и подключаем его, если его нет
+    if (!document.querySelector('[href*="font-awesome"]')) {
+        const fontAwesome = document.createElement('link');
+        fontAwesome.rel = 'stylesheet';
+        fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css';
+        document.head.appendChild(fontAwesome);
+    }
+    
+    // Обновление приветственного сообщения
+    document.getElementById('welcomeMessageForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        formData.append('welcome_message', document.getElementById('welcomeMessage').value);
+        formData.append('welcome_image', document.getElementById('welcomeImage').files[0]);
+        
+        fetch('/update_welcome_message', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Ошибка: ' + data.error);
+            } else {
+                alert('Приветственное сообщение успешно обновлено');
+            }
+        })
+        .catch(error => {
+            alert('Ошибка при обновлении: ' + error);
+        });
+    });
+    
+    // JavaScript для отправки формы рассылки
+    document.getElementById('submitBroadcast').addEventListener('click', function() {
+        const form = document.getElementById('broadcastForm');
+        const formData = new FormData(form);
+        
+        // Проверка заполнения полей
+        const text = formData.get('text');
+        if (!text || text.trim() === '') {
+            alert('Пожалуйста, введите текст сообщения');
+            return;
+        }
+        
+        // Отправка данных на сервер
+        fetch('/create_broadcast', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Ошибка: ' + data.error);
+            } else {
+                alert('Рассылка успешно создана');
+                location.reload();
+            }
+            
+            // Закрыть модальное окно
+            const modal = bootstrap.Modal.getInstance(document.getElementById('createBroadcastModal'));
+            if (modal) modal.hide();
+        })
+        .catch(error => {
+            alert('Ошибка при создании рассылки: ' + error);
+        });
+    });
+    
+    // Загрузка изображений для рассылок после загрузки страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        const imageDivs = document.querySelectorAll('[id^="broadcast-images-"]');
+        
+        imageDivs.forEach(div => {
+            const broadcastId = div.dataset.broadcastId;
+            
+            // Загружаем изображения для данной рассылки
+            fetch(`/get_broadcast_images/${broadcastId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Ошибка сети или сервера');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Удаляем спиннер в любом случае
+                    div.innerHTML = '';
+                    
+                    if (data.success && data.images && data.images.length > 0) {
+                        // Отображаем изображения
+                        data.images.forEach(image => {
+                            const img = document.createElement('img');
+                            img.src = image.s3_url;
+                            img.alt = 'Изображение рассылки';
+                            img.className = 'broadcast-image me-1 mb-1';
+                            img.style.width = '60px';
+                            img.style.height = '60px';
+                            img.style.objectFit = 'cover';
+                            div.appendChild(img);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка при загрузке изображений:', error);
+                    div.innerHTML = '';
+                });
+        });
+    });
+    
+    // Обработчик для кнопки отправки рассылки
+    document.querySelectorAll('.send-broadcast-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const broadcastId = this.dataset.broadcastId;
+            sendBroadcast(broadcastId);
+        });
+    });
+    
+    // Обработчик для кнопки повторной отправки рассылки
+    document.querySelectorAll('.resend-broadcast-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const broadcastId = this.dataset.broadcastId;
+            if (confirm('Вы уверены, что хотите отправить эту рассылку повторно?')) {
+                sendBroadcast(broadcastId);
+            }
+        });
+    });
+    
+    // Добавляем обработчик для кнопки удаления рассылки
+    document.querySelectorAll('.delete-broadcast-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const broadcastId = this.dataset.broadcastId;
+            if (confirm('Вы уверены, что хотите удалить эту рассылку?')) {
+                deleteBroadcast(broadcastId);
+            }
+        });
+    });
+    
+    // Функция отправки рассылки (исправленная)
+    function sendBroadcast(broadcastId) {
+        const button = document.querySelector(`.send-broadcast-btn[data-broadcast-id="${broadcastId}"], .resend-broadcast-btn[data-broadcast-id="${broadcastId}"]`);
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Отправка...';
+        
+        fetch(`/send_broadcast/${broadcastId}`, {
+            method: 'POST',
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Ошибка: ' + data.error);
+                button.textContent = originalText;
+                button.disabled = false;
+            } else {
+                alert(data.message);
+                location.reload();
+            }
+        })
+        .catch(error => {
+            alert('Ошибка при отправке рассылки: ' + error);
+            button.textContent = originalText;
+            button.disabled = false;
+        });
+    }
+
+    // Функция удаления рассылки
+    function deleteBroadcast(broadcastId) {
+        fetch(`/delete_broadcast/${broadcastId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Ошибка: ' + data.error);
+            } else {
+                alert('Рассылка успешно удалена');
+                location.reload();
+            }
+        })
+        .catch(error => {
+            alert('Ошибка при удалении рассылки: ' + error);
+        });
+    }
+</script>
+
+<!-- Добавьте в секцию head или style -->
+<style>
+    .broadcast-images {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        max-width: 200px;
+    }
+    
+    .broadcast-image {
+        border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    
+    .broadcast-image:hover {
+        transform: scale(1.05);
+        cursor: pointer;
+    }
+    
+    /* Добавляем новые стили */
+    #welcomeMessage {
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        font-size: 1rem;
+        resize: vertical;
+        min-height: 120px;
+    }
+    
+    #welcomeMessage:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    /* Анимация для подсказки */
+    .form-text {
+        color: #6c757d;
+        font-size: 0.875rem;
+        transition: color 0.3s;
+    }
+    
+    .form-control:focus + .form-text,
+    .form-control:hover + .form-text {
+        color: #0d6efd;
+    }
+    
+    /* Стиль для кнопки создания рассылки */
+    .create-broadcast-btn {
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    
+    .create-broadcast-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %} 

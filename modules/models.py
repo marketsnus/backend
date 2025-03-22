@@ -116,4 +116,84 @@ class NewProducts(db.Model):
             'category': self.category,
             's3_url': self.s3_url,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+class BotSettings(db.Model):
+    __tablename__ = 'bot_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    welcome_message = db.Column(db.Text, nullable=False, default="Добро пожаловать в магазин Elevamart! 🚀\n\nЗдесь вы можете ознакомиться с нашим ассортиментом и сделать заказ.")
+    welcome_image_url = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'welcome_message': self.welcome_message,
+            'welcome_image_url': self.welcome_image_url,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+class BroadcastMessage(db.Model):
+    __tablename__ = 'broadcast_messages'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text, nullable=False)
+    image_path = db.Column(db.String(500))
+    s3_url = db.Column(db.String(500))
+    status = db.Column(db.String(20), default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    sent_at = db.Column(db.DateTime)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'text': self.text,
+            'image_path': self.image_path,
+            's3_url': self.s3_url,
+            'status': self.status,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'sent_at': self.sent_at.strftime('%Y-%m-%d %H:%M:%S') if self.sent_at else None
+        }
+
+class BroadcastImage(db.Model):
+    __tablename__ = 'broadcast_images'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    broadcast_id = db.Column(db.Integer, db.ForeignKey('broadcast_messages.id', ondelete='CASCADE'))
+    s3_url = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'broadcast_id': self.broadcast_id,
+            's3_url': self.s3_url,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+class BotUser(db.Model):
+    __tablename__ = 'bot_users'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    chat_id = db.Column(db.String(50), nullable=False, unique=True)
+    username = db.Column(db.String(100))
+    first_name = db.Column(db.String(100))
+    last_name = db.Column(db.String(100))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_interaction = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'chat_id': self.chat_id,
+            'username': self.username,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'is_active': self.is_active,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'last_interaction': self.last_interaction.strftime('%Y-%m-%d %H:%M:%S')
         } 
