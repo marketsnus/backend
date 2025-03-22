@@ -4,7 +4,7 @@ import logging
 import json
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.filters import Command
-from aiogram.types import Message, FSInputFile, InputMediaPhoto
+from aiogram.types import Message, FSInputFile, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
 from flask import current_app
@@ -31,7 +31,7 @@ def get_welcome_message():
         logger.error(f"Ошибка при чтении приветственного сообщения: {e}")
         return DEFAULT_WELCOME
 
-# Функция для получения URL изображения приветственного сообщения
+
 def get_welcome_image_url():
     try:
         image_file_path = 'data/welcome_image_url.txt'
@@ -69,11 +69,26 @@ async def cmd_start(message: Message):
         welcome_message = get_welcome_message()
         welcome_image_url = get_welcome_image_url()
         
-        # Отправляем сообщение с изображением, если оно есть
+        # Создаем клавиатуру с кнопкой веб-приложения
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text="🛍️ Открыть магазин", 
+                web_app=WebAppInfo(url="https://smarket-irk.ru/")
+            )]
+        ])
+        
+        # Отправляем сообщение с изображением и клавиатурой, если оно есть
         if welcome_image_url:
-            await message.answer_photo(photo=welcome_image_url, caption=welcome_message)
+            await message.answer_photo(
+                photo=welcome_image_url, 
+                caption=welcome_message,
+                reply_markup=keyboard
+            )
         else:
-            await message.answer(welcome_message)
+            await message.answer(
+                welcome_message,
+                reply_markup=keyboard
+            )
         
     except Exception as e:
         logger.error(f"Ошибка при обработке команды /start: {e}")
