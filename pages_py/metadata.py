@@ -6,8 +6,32 @@ import uuid
 from werkzeug.utils import secure_filename
 import logging
 import json
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
+
+# Создаем кеш
+_cache = {}
+_cache_time = {}
+
+def cached(seconds=60):
+    """Декоратор для кеширования результатов функции"""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            cache_key = f"{func.__name__}"
+            now = datetime.now()
+            
+            # Проверяем валидность кеша
+            if cache_key in _cache and _cache_time.get(cache_key) > now:
+                return _cache[cache_key]
+            
+            # Получаем и кешируем результат
+            result = func(*args, **kwargs)
+            _cache[cache_key] = result
+            _cache_time[cache_key] = now + timedelta(seconds=seconds)
+            return result
+        return wrapper
+    return decorator
 
 def get_metadata_value(key, default=''):
     metadata = Metadata.query.filter_by(key=key).first()
@@ -141,8 +165,9 @@ def metadata_page():
     }
     return render_template('metadata.html', metadata=metadata)
 
+@cached(seconds=30)  # Более длительное кеширование для метаданных
 def get_metadata_api():
-    """API endpoint для получения всех метаданных"""
+    """API для получения метаданных"""
     try:
         metadata = {
             'support_link': get_metadata_value('support_link'),

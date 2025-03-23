@@ -126,7 +126,9 @@ async def start_polling():
         if bot:
             dp = get_dispatcher()
             logger.info("Запуск бота в режиме поллинга")
-            await dp.start_polling(bot, skip_updates=True)
+            
+            # Изменяем эту строку, чтобы отключить обработку сигналов
+            await dp.start_polling(bot, skip_updates=True, handle_signals=False)
     except Exception as e:
         logger.error(f"Ошибка при запуске бота: {e}")
 
@@ -178,3 +180,52 @@ async def send_media_group(chat_id, text, image_urls):
 # Добавьте эту функцию в bot_handler.py для получения токена бота
 def get_token():
     return os.getenv("TELEGRAM_BOT_TOKEN")
+
+# Добавьте эту функцию
+async def register_webhook(app_url, path='/webhook'):
+    """
+    Регистрирует вебхук для бота
+    """
+    try:
+        bot = await create_bot()
+        if not bot:
+            return False
+            
+        webhook_url = f"{app_url}{path}"
+        logger.info(f"Регистрация вебхука: {webhook_url}")
+        
+        # Удаляем предыдущий вебхук, если он был
+        await bot.delete_webhook()
+        
+        # Устанавливаем новый вебхук
+        await bot.set_webhook(url=webhook_url)
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка при регистрации вебхука: {e}")
+        return False
+
+# Функция для обработки вебхука
+async def process_webhook(request):
+    """
+    Обрабатывает входящий запрос вебхука
+    """
+    try:
+        bot = await create_bot()
+        if not bot:
+            return False
+            
+        dp = get_dispatcher()
+        
+        # Получаем данные запроса
+        data = await request.json()
+        
+        # Создаем объект обновления
+        from aiogram.types import Update
+        update = Update.model_validate(data)
+        
+        # Обрабатываем обновление
+        await dp.feed_update(bot, update)
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка при обработке вебхука: {e}")
+        return False

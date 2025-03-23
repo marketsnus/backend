@@ -41,7 +41,15 @@ app.config.update(
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     UPLOAD_FOLDER=os.path.join(basedir, 'static', 'uploads'),
     MAX_CONTENT_LENGTH=16 * 1024 * 1024,
-    SECRET_KEY=os.environ.get('FLASK_SECRET_KEY') or os.urandom(24)
+    SECRET_KEY=os.environ.get('FLASK_SECRET_KEY') or os.urandom(24),
+    # Настройки для максимального количества соединений
+    SQLALCHEMY_ENGINE_OPTIONS={
+        'pool_size': 50,           # Увеличено с дефолтных 5 до 50
+        'max_overflow': 100,       # Увеличено с дефолтных 10 до 100
+        'pool_timeout': 60,        # Таймаут ожидания соединения в секундах
+        'pool_recycle': 1800,      # Пересоздание соединений через 30 минут
+        'pool_pre_ping': True      # Проверка соединений перед использованием
+    }
 )
 
 upload_folder = os.path.join(app.static_folder, 'uploads')

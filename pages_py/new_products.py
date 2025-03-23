@@ -5,11 +5,34 @@ import uuid
 import os
 import logging
 from werkzeug.utils import secure_filename
+from datetime import datetime, timedelta
 
 # Настройка логгера
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Создаем кеш
+_cache = {}
+_cache_time = {}
+
+def cached(seconds=60):
+    """Декоратор для кеширования результатов функции"""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            cache_key = f"{func.__name__}"
+            now = datetime.now()
+            
+            # Проверяем валидность кеша
+            if cache_key in _cache and _cache_time.get(cache_key) > now:
+                return _cache[cache_key]
+            
+            # Получаем и кешируем результат
+            result = func(*args, **kwargs)
+            _cache[cache_key] = result
+            _cache_time[cache_key] = now + timedelta(seconds=seconds)
+            return result
+        return wrapper
+    return decorator
 
 def new_products_page():
     """Страница управления новинками"""
@@ -92,8 +115,9 @@ def delete_new_product_handler(product_id):
         logger.error(f'Ошибка удаления файла из S3: {product.filename}')
         return jsonify({'error': 'Ошибка удаления из S3'}), 500
 
+@cached(seconds=10)  # Кешируем на 10 секунд
 def get_new_products_api():
-    """API endpoint для получения списка новинок"""
+    """API для получения списка новинок"""
     logger.info('Запрос списка новинок через API')
     products = NewProducts.query.order_by(NewProducts.created_at.desc()).all()
     return jsonify({
