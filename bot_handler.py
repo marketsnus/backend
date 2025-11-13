@@ -4,7 +4,7 @@ import logging
 import json
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.filters import Command
-from aiogram.types import Message, FSInputFile, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.types import Message, FSInputFile, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, URLInputFile
 from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
 from flask import current_app
@@ -20,6 +20,7 @@ router = Router()
 # Путь к файлу с приветственным сообщением
 WELCOME_MESSAGE_FILE = 'data/welcome_message.txt'
 DEFAULT_WELCOME = "приветсвенное сообщение"
+WELCOME_VIDEO_URL = "https://t.me/adsfjpladijflasjhdf/2"
 
 def get_welcome_message():
     try:
@@ -43,6 +44,10 @@ def get_welcome_image_url():
         logger.error(f"Ошибка при получении URL изображения приветственного сообщения: {e}")
         return None
 
+def get_welcome_video_url():
+    """Возвращает URL видео для приветственного сообщения"""
+    return WELCOME_VIDEO_URL if WELCOME_VIDEO_URL else None
+
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     try:
@@ -65,22 +70,23 @@ async def cmd_start(message: Message):
         with open(users_list_file, 'a', encoding='utf-8') as f:
             f.write(f"{message.chat.id}\n")
         
-        # Получаем приветственное сообщение и изображение
+        # Получаем приветственное сообщение, изображение и видео
         welcome_message = get_welcome_message()
         welcome_image_url = get_welcome_image_url()
-        
+        welcome_video_url = get_welcome_video_url()
+
         # Создаем клавиатуру с кнопкой веб-приложения
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(
-                text="🛍️ Открыть магазин", 
+                text="🛍️ Открыть магазин",
                 web_app=WebAppInfo(url="https://smarket-irk.ru/")
             )]
         ])
-        
+
         # Отправляем сообщение с изображением и клавиатурой, если оно есть
         if welcome_image_url:
             await message.answer_photo(
-                photo=welcome_image_url, 
+                photo=welcome_image_url,
                 caption=welcome_message,
                 reply_markup=keyboard
             )
@@ -89,6 +95,14 @@ async def cmd_start(message: Message):
                 welcome_message,
                 reply_markup=keyboard
             )
+
+        # Отправляем видео, если оно указано
+        if welcome_video_url:
+            try:
+                await message.answer_video(video=welcome_video_url)
+                await message.answer("⬆️ видео-инструкция по оформлению заказа через приложение")
+            except Exception as video_error:
+                logger.error(f"Ошибка при отправке видео: {video_error}")
         
     except Exception as e:
         logger.error(f"Ошибка при обработке команды /start: {e}")
