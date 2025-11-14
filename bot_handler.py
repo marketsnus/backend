@@ -79,7 +79,7 @@ async def cmd_start(message: Message):
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(
                 text="🛍️ Открыть магазин",
-                web_app=WebAppInfo(url="https://smarket-irk.ru/")
+                web_app=WebAppInfo(url="https://smarketirk38.ru/")
             )]
         ])
 
